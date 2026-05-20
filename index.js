@@ -989,10 +989,12 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  // Healthcheck real: si WhatsApp no está conectado, Fly.io reiniciará el contenedor
-  const healthy = isConnected && sock !== null;
-  res.status(healthy ? 200 : 503).json({
-    status: healthy ? 'healthy' : 'disconnected',
+  // Healthcheck básico: solo verifica que el servidor Express está vivo
+  // Fly.io usa esto para saber si debe enrutar tráfico a esta máquina
+  // NO usamos 503 aquí porque si WhatsApp está desconectado (esperando QR)
+  // Fly.io dejaría de enrutar tráfico y nadie podría escanear el QR
+  res.status(200).json({
+    status: 'healthy',
     server: 'up',
     connected: isConnected,
     uptime: process.uptime(),
