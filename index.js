@@ -128,6 +128,9 @@ const SYSTEM_PROMPT = FAQS_DATA.system_prompt || 'Eres el asistente virtual ofic
 let sock = null;
 let isConnected = false;
 let qrCodeData = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 20;
+const BASE_RECONNECT_DELAY = 5000;
 let isShuttingDown = false;
 let botPhoneNumber = null;
 
@@ -987,7 +990,9 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   // Healthcheck básico: solo verifica que el servidor Express está vivo
-  // Railway usa esto para saber si debe reiniciar el contenedor
+  // Fly.io usa esto para saber si debe enrutar tráfico a esta máquina
+  // NO usamos 503 aquí porque si WhatsApp está desconectado (esperando QR)
+  // Fly.io dejaría de enrutar tráfico y nadie podría escanear el QR
   res.status(200).json({
     status: 'healthy',
     server: 'up',
@@ -1052,6 +1057,28 @@ app.get('/qr', (req, res) => {
       } else {
         res.json({ qr: url, raw: qrCodeData });
       }
+    })
+    .catch(err => res.status(500).json({ error: err.message }));
+});
+
+// Alias amigable /qr-html que SIEMPRE devuelve página HTML
+app.get('/qr-html', (req, res) => {
+  if (!qrCodeData) {
+    return res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp QR - Necio Bot</title>
+<style>body{font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#fff;text-align:center;padding:20px}h1{margin-bottom:10px}p{color:#aaa}.loader{border:4px solid #333;border-top:4px solid #0f0;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}</style>
+<script>setInterval(()=>location.reload(),3000)</script>
+</head><body><h1>⏳ Generando QR...</h1><div class="loader"></div><p>Espera unos segundos y recarga la página.</p><p style="font-size:12px;color:#666;margin-top:20px">Si tarda más de 1 minuto, el bot puede estar reiniciando.</p></body></html>`);
+  }
+  QRCode.toDataURL(qrCodeData, { width: 400, margin: 2 })
+    .then(url => {
+      res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp QR - Necio Bot</title>
+<style>body{font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff;text-align:center;padding:20px}h1{margin-bottom:10px;font-size:22px}img{max-width:90vw;border-radius:12px;box-shadow:0 0 40px rgba(0,255,0,.3)}p{color:#aaa;margin-top:15px;font-size:14px}.refresh{color:#0f0;font-size:14px;margin-top:20px}.badge{background:#222;padding:6px 12px;border-radius:20px;font-size:12px;color:#888;margin-top:10px}</style>
+<script>setInterval(()=>fetch('/').then(r=>r.json()).then(d=>{if(!d.qrAvailable){location.reload()}}),5000)</script>
+</head><body><h1>📱 Escanea con WhatsApp</h1><img src="${url}" alt="QR Code" style="max-width:350px"><p>Abre WhatsApp → Ajustes → Dispositivos vinculados → Vincular dispositivo</p><p class="refresh">⏳ Este QR se actualiza automáticamente</p><div class="badge">Bot: necio-whatsapp-bot-v3.fly.dev</div></body></html>`);
     })
     .catch(err => res.status(500).json({ error: err.message }));
 });
@@ -1280,7 +1307,7 @@ small{color:#666;font-size:12px}
 </div>
 
 <script>
-const API_KEY = 'neciobot2026seguro';
+const API_KEY = '${API_SECRET || 'neciobot2026seguro'}';
 
 function show(id, text) {
   const el = document.getElementById(id);
@@ -1869,7 +1896,7 @@ async function processMessage(userId, name, text) {
 
   // Comando ayuda
   if (text.trim().toLowerCase() === '/ayuda' || text.trim().toLowerCase() === '/help') {
-    await sendWhatsAppMessage(userId, `🤖 *Comandos disponibles:*\n\n*Generales:*\n• */ayuda* - Ver esta lista\n• */humano* - Hablar con una persona\n• */bot* - Reactivarme\n• */estado* - Ver si estoy conectado\n\n*Conocimiento:*\n• */temas* - Ver lo que sé\n• */aprender [tema]* - Enseñarme algo nuevo\n• */olvidar [tema]* - Borrar un tema\n\n*CRM / Clientes:*\n• */cliente [nombre]* - Registrar tu nombre\n• */estado [nuevo|contactado|cotizado|cerrado|perdido]* - Cambiar estado\n• */etiqueta [tag]* - Agregar etiqueta\n• */miinfo* - Ver tu perfil\n• */historial* - Ver conversaciones recientes\n• */clientes* - Listar todos (admin)\n\n*Finanzas:*\n• */ingreso [monto] [desc]* - Registrar ingreso\n• */gasto [monto] [desc]* - Registrar gasto\n• */balance* - Ver finanzas\n\n*Admin:*\n• */stats* - Estadísticas completas\n\n📚 Web: https://necio-whatsapp-bot-v3-production.up.railway.app/learn\n\n¿En qué puedo ayudarte?`, { simulateTyping: false });
+    await sendWhatsAppMessage(userId, `🤖 *Comandos disponibles:*\n\n*Generales:*\n• */ayuda* - Ver esta lista\n• */humano* - Hablar con una persona\n• */bot* - Reactivarme\n• */estado* - Ver si estoy conectado\n\n*Conocimiento:*\n• */temas* - Ver lo que sé\n• */aprender [tema]* - Enseñarme algo nuevo\n• */olvidar [tema]* - Borrar un tema\n\n*CRM / Clientes:*\n• */cliente [nombre]* - Registrar tu nombre\n• */estado [nuevo|contactado|cotizado|cerrado|perdido]* - Cambiar estado\n• */etiqueta [tag]* - Agregar etiqueta\n• */miinfo* - Ver tu perfil\n• */historial* - Ver conversaciones recientes\n• */clientes* - Listar todos (admin)\n\n*Finanzas:*\n• */ingreso [monto] [desc]* - Registrar ingreso\n• */gasto [monto] [desc]* - Registrar gasto\n• */balance* - Ver finanzas\n\n*Admin:*\n• */stats* - Estadísticas completas\n\n📚 Web: https://necio-whatsapp-bot-v3.fly.dev/learn\n\n¿En qué puedo ayudarte?`, { simulateTyping: false });
     return;
   }
 
@@ -2006,7 +2033,7 @@ ${topProviders}`, { simulateTyping: false });
   // Comando /temas - ver lo que sabe el bot
   if (text.trim().toLowerCase() === '/temas') {
     if (knowledgeIndex.length === 0) {
-      await sendWhatsAppMessage(userId, `📚 Aún no sé nada.\n\nPara enseñarme:\n1. Escribe */aprender [tema]*\n2. Envíame el contenido\n\nO usa la web:\nhttps://necio-whatsapp-bot-v3-production.up.railway.app/learn`, { simulateTyping: false });
+      await sendWhatsAppMessage(userId, `📚 Aún no sé nada.\n\nPara enseñarme:\n1. Escribe */aprender [tema]*\n2. Envíame el contenido\n\nO usa la web:\nhttps://necio-whatsapp-bot-v3.fly.dev/learn`, { simulateTyping: false });
     } else {
       const list = knowledgeIndex.map((k, i) => `${i + 1}. ${k.topic}`).join('\n');
       await sendWhatsAppMessage(userId, `📚 *Temas que conozco (${knowledgeIndex.length}):*\n\n${list}\n\nPara ver uno en detalle, escribe */aprender [nombre]* y envía el contenido.`, { simulateTyping: false });
@@ -2381,12 +2408,20 @@ async function startBot() {
     if (connection === 'close') {
       isConnected = false;
       qrCodeData = null;
+      reconnectAttempts++;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      console.log(`\n[!] Conexión cerrada. Código: ${statusCode}`);
+      console.log(`\n[!] Conexión cerrada. Código: ${statusCode}. Intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
 
       // Registrar fallo para session rotation
       if (statusCode === 401 || statusCode === 403 || statusCode === DisconnectReason.loggedOut) {
         sessionFailureLog.push({ code: statusCode || 0, time: Date.now() });
+      }
+
+      // Si superamos intentos máximos, rotar sesión automáticamente
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('[!] Máximos intentos de reconexión alcanzados. Rotando sesión...');
+        rotateSession();
+        reconnectAttempts = 0;
       }
 
       // Si la sesión es inválida (401, 403, loggedOut), borrar credenciales
@@ -2394,7 +2429,7 @@ async function startBot() {
         console.log('[!] Sesión inválida o cerrada. Borrando credenciales...');
         try {
           if (fs.existsSync(SESSION_DIR)) {
-            // Railway: no se puede borrar el directorio raíz del volumen (EBUSY).
+            // Fly.io: no se puede borrar el directorio raíz del volumen (EBUSY).
             // Borramos archivos individualmente.
             const entries = fs.readdirSync(SESSION_DIR);
             for (const entry of entries) {
@@ -2412,8 +2447,9 @@ async function startBot() {
         }
         // Anti-ban: intentar rotar sesión antes de reiniciar
         rotateSession();
+        reconnectAttempts = 0;
         if (ADMIN_WHATSAPP) {
-          sendWhatsAppMessage(ADMIN_WHATSAPP, '⚠️ Sesión borrada. Escanea QR nuevo en: https://necio-whatsapp-bot-v3-production.up.railway.app/qr', { simulateTyping: false })
+          sendWhatsAppMessage(ADMIN_WHATSAPP, '⚠️ Sesión borrada. Escanea QR nuevo en: https://necio-whatsapp-bot-v3.fly.dev/qr', { simulateTyping: false })
             .catch(() => {});
         }
         if (!isShuttingDown) {
@@ -2422,15 +2458,19 @@ async function startBot() {
           setTimeout(startBot, delay);
         }
       } else if (!isShuttingDown) {
-        const delay = NODE_ENV === 'production' ? 10000 + Math.floor(Math.random() * 5000) : 5000;
-        console.log(`[+] Reconectando en ${delay / 1000}s...\n`);
-        setTimeout(startBot, delay);
+        // Backoff exponencial: 5s → 10s → 20s → 40s → max 5min
+        const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1), 300000);
+        const jitter = Math.floor(Math.random() * 5000);
+        const totalDelay = delay + jitter;
+        console.log(`[+] Reconectando en ${(totalDelay / 1000).toFixed(1)}s... (backoff exponencial)\n`);
+        setTimeout(startBot, totalDelay);
       }
     }
 
     if (connection === 'open') {
       isConnected = true;
       qrCodeData = null;
+      reconnectAttempts = 0;
       botPhoneNumber = sock.user?.id?.split(':')[0];
       console.log('\n✅ BOT CONECTADO Y LISTO');
       console.log('📱 Número:', botPhoneNumber);
