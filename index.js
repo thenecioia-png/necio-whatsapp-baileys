@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
@@ -2349,7 +2349,7 @@ async function startBot() {
     syncFullHistory: false,
     markOnlineOnConnect: false, // Anti-ban: no mostrar siempre "en línea"
     keepAliveIntervalMs: 30000,
-    browser: ['Chrome (Linux)', '', ''], // Anti-ban: browser más genérico
+    browser: Browsers.appropriate('Chrome'), // Browser válido para WhatsApp Web
     connectTimeoutMs: 60000,
     defaultQueryTimeoutMs: 60000,
     shouldIgnoreJid: (jid) => {

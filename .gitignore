@@ -7,3 +7,7 @@ build/
 *.log
 npm-debug.log*
 .DS_Store
+
+# WhatsApp auth data (sensibles)
+auth_info_baileys/
+auth_info/
