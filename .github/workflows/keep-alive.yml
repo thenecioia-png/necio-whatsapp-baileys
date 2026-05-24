@@ -1,0 +1,26 @@
+name: Keep Alive Bot
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Cada 5 minutos
+  workflow_dispatch:
+
+jobs:
+  ping-keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /keep-alive (reconecta WhatsApp si está caído)
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://necio-whatsapp-bot-v3.fly.dev/keep-alive)
+          echo "[/keep-alive] HTTP Status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::warning::Keep-alive endpoint returned $HTTP_CODE"
+          fi
+
+      - name: Ping /health (verifica servidor vivo)
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://necio-whatsapp-bot-v3.fly.dev/health)
+          echo "[/health] HTTP Status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::warning::Health endpoint returned $HTTP_CODE"
+          fi

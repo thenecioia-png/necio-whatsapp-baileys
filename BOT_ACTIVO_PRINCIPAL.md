@@ -52,6 +52,33 @@
 - ✅ URLs internas corregidas de Railway → Fly.io
 - ✅ Volumen persistente en Fly.io para no perder sesión entre reinicios
 
+## 💓 Sistema Keep-Alive 24/7 (2026-05-23) — TODO AUTOMÁTICO
+
+El bot tiene **3 capas** para que nunca se duerma. **Ya está todo configurado**, no tienes que hacer nada:
+
+| Capa | Método | Frecuencia | Estado |
+|------|--------|------------|--------|
+| 1 | **GitHub Actions** (externo, nube) | Cada 5 minutos | ✅ Configurado |
+| 2 | **Self-ping interno** | Cada 4 minutos | ✅ Configurado |
+| 3 | **Endpoint `/keep-alive`** | Cada ping + reconexión automática | ✅ Configurado |
+
+### ¿Cómo funciona?
+
+1. **GitHub Actions** corre en los servidores de Microsoft y visita tu bot cada 5 minutos desde internet real. Esto evita que Fly.io "duerma" la app por falta de tráfico.
+2. **Self-ping interno**: el propio bot se hace requests a sí mismo cada 4 minutos como respaldo.
+3. **Endpoint `/keep-alive`**: cada vez que recibe un ping, revisa si WhatsApp está conectado. Si está caído, **reconecta automáticamente** (máximo 1 vez por minuto para no spamear).
+
+### URLs de monitoreo (puedes abrirlas en el navegador)
+
+| Endpoint | URL | Qué ves |
+|----------|-----|---------|
+| **Keep-Alive** | `https://necio-whatsapp-bot-v3.fly.dev/keep-alive` | Si el bot respondió y qué acción tomó |
+| **Health** | `https://necio-whatsapp-bot-v3.fly.dev/health` | Estado del servidor + métricas de keep-alive |
+| **Status** | `https://necio-whatsapp-bot-v3.fly.dev/status` | Si WhatsApp está realmente conectado |
+
+> **Nota:** Si quieres desactivar la reconexión automática vía keep-alive, agrega a `.env`:
+> `WHATSAPP_RECONNECT_ON_PING=false`
+
 ---
 
 ## 📁 Otros bots (NO FUNCIONAN — solo referencia)
@@ -63,5 +90,5 @@
 
 ---
 
-*Última actualización: 2026-05-20*
+*Última actualización: 2026-05-23*
 *Autor: thenecioia-png*
