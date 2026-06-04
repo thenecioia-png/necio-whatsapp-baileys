@@ -11,3 +11,7 @@ npm-debug.log*
 # WhatsApp auth data (sensibles)
 auth_info_baileys/
 auth_info/
+wweb-final-auth/
+.wwebjs_cache/
+qr-*.png
+*.png

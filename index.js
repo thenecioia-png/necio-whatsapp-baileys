@@ -151,6 +151,16 @@ const BASE_RECONNECT_DELAY = 5000;
 let isShuttingDown = false;
 let botPhoneNumber = null;
 
+// ─── KEEP-ALIVE SYSTEM ──────────────────────────────────────────
+let lastExternalPing = Date.now();
+let lastSelfPing = Date.now();
+let keepAliveInterval = null;
+let lastWhatsAppReconnectAttempt = 0;
+const KEEP_ALIVE_URL = process.env.KEEP_ALIVE_URL || `http://localhost:${PORT}/keep-alive`;
+const SELF_PING_INTERVAL_MS = 4 * 60 * 1000; // 4 minutos
+const EXTERNAL_PING_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutos sin ping externo = alerta
+const WHATSAPP_RECONNECT_ON_PING = process.env.WHATSAPP_RECONNECT_ON_PING !== 'false';
+
 // Cola de mensajes
 const messageQueue = [];
 let isProcessing = false;
@@ -1142,10 +1152,12 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  // Healthcheck: servidor siempre responde 200 para que Fly.io no mate el contenedor
+  // Healthcheck: servidor siempre responde 200 para que Fly.io/Render no maten el contenedor
   // La app puede estar desconectada de WhatsApp pero el servidor debe seguir vivo
   // para que el usuario pueda escanear QR desde /qr-html
   const mem = process.memoryUsage();
+  const externalPingAgo = Date.now() - lastExternalPing;
+  const selfPingAgo = Date.now() - lastSelfPing;
   res.status(200).json({
     status: 'healthy',
     server: 'up',
@@ -1155,6 +1167,54 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     queueSize: messageQueue.length,
     memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
+    keepAlive: {
+      lastExternalPingAgoSec: Math.floor(externalPingAgo / 1000),
+      lastSelfPingAgoSec: Math.floor(selfPingAgo / 1000),
+      externalPingHealthy: externalPingAgo < EXTERNAL_PING_TIMEOUT_MS,
+      selfPingHealthy: selfPingAgo < SELF_PING_INTERVAL_MS * 2
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/keep-alive', async (req, res) => {
+  // Endpoint diseñado para ser llamado por cron-job.org o servicios externos
+  // Registra el ping y, si WhatsApp está caído, intenta reconectar
+  lastExternalPing = Date.now();
+  const pingSource = req.headers['user-agent'] || 'unknown';
+  console.log(`[💓] Keep-alive ping recibido desde: ${pingSource.substring(0, 60)}`);
+
+  let actionTaken = 'none';
+
+  // Si WhatsApp está desconectado y no hemos intentado reconectar recientemente (anti-spam)
+  if (WHATSAPP_RECONNECT_ON_PING && !isConnected && !isShuttingDown) {
+    const timeSinceLastReconnect = Date.now() - lastWhatsAppReconnectAttempt;
+    if (timeSinceLastReconnect > 60000) { // máximo 1 intento por minuto vía ping
+      lastWhatsAppReconnectAttempt = Date.now();
+      actionTaken = 'reconnect_attempt';
+      console.log('[💓] WhatsApp desconectado detectado en keep-alive. Forzando reconexión...');
+      // Limpiar socket anterior si existe
+      try {
+        if (sock) {
+          sock.ev.removeAllListeners();
+          sock = null;
+        }
+      } catch (e) {
+        // ignorar
+      }
+      setTimeout(() => {
+        startBot().catch(err => console.error('[!] Error en reconexión forzada:', err.message));
+      }, 2000);
+    } else {
+      actionTaken = 'reconnect_skipped_rate_limit';
+    }
+  }
+
+  res.status(200).json({
+    status: 'ok',
+    connected: isConnected,
+    actionTaken,
+    uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
@@ -2581,6 +2641,49 @@ function rotateSession() {
   return false;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// KEEP-ALIVE SYSTEM (Auto-visita 24/7)
+// ═══════════════════════════════════════════════════════════════════
+
+function startKeepAlive() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+  }
+
+  // Self-ping: cada 4 minutos hace una petición HTTP a sí mismo
+  // Esto previene que Fly.io u otros hosts "duerman" el proceso por inactividad
+  keepAliveInterval = setInterval(async () => {
+    try {
+      const url = KEEP_ALIVE_URL;
+      const start = Date.now();
+
+      // Usar el módulo http/https nativo según corresponda
+      const client = url.startsWith('https:') ? https : http;
+
+      await new Promise((resolve, reject) => {
+        const req = client.get(url, { timeout: 15000 }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => resolve(data));
+        });
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Timeout'));
+        });
+      });
+
+      lastSelfPing = Date.now();
+      const elapsed = Date.now() - start;
+      console.log(`[💓] Self-ping OK (${elapsed}ms) → ${url}`);
+    } catch (err) {
+      console.error(`[💓] Self-ping falló:`, err.message);
+    }
+  }, SELF_PING_INTERVAL_MS);
+
+  console.log(`[💓] Keep-alive activado. Self-ping cada ${SELF_PING_INTERVAL_MS / 60000} min a: ${KEEP_ALIVE_URL}`);
+}
+
 async function startBot() {
   if (isShuttingDown) return;
 
@@ -2687,6 +2790,7 @@ async function startBot() {
       isConnected = true;
       qrCodeData = null;
       reconnectAttempts = 0;
+      lastWhatsAppReconnectAttempt = 0; // resetear rate limiter de keep-alive
       botPhoneNumber = sock.user?.id?.split(':')[0];
       console.log('\n✅ BOT CONECTADO Y LISTO');
       console.log('📱 Número:', botPhoneNumber);
@@ -2857,7 +2961,12 @@ app.listen(PORT, HOST, () => {
   console.log(`║  IAs:       Cerebras → Groq → Gemini → OpenRouter ║`);
   console.log(`║  Fallback:  Respuesta local inteligente          ║`);
   console.log(`║  Memoria:   ${PERSIST_MEMORY ? 'PERSISTENTE' : 'VOLATIL'.padEnd(35)} ║`);
+  console.log('╠══════════════════════════════════════════════════╣');
+  console.log('║  Keep-Alive: Self-ping + cron-job.org compatible ║');
   console.log('╚══════════════════════════════════════════════════╝\n');
+
+  // Activar sistema de auto-visita
+  startKeepAlive();
 });
 
 startBot().catch((err) => {
