@@ -120,7 +120,24 @@ let FAQS_TEXT = FAQS_DATA.faqs.map(f => `P: ${f.question}\nR: ${f.answer}`).join
 if (FAQS_TEXT.length > 2000) {
   FAQS_TEXT = FAQS_TEXT.substring(0, 2000) + '\n... (más FAQs disponibles)';
 }
-const SYSTEM_PROMPT = FAQS_DATA.system_prompt || 'Eres el asistente virtual oficial de The Necio Digital. Tienes acceso a conocimientos especializados en ventas, construcción, soldadura, herrería, leyes y más. Usa el conocimiento especializado cuando sea relevante para la pregunta del usuario. Si no sabes algo, lo admites honestamente. Eres profesional pero cercano, con tono dominicano natural.';
+const SYSTEM_PROMPT = FAQS_DATA.system_prompt || `Eres el asistente virtual oficial de The Necio Digital. Tu nombre es NecioBot. Eres dominicano de corazón: usas expresiones naturales como "dime", "vamos allá", "claro que sí", "dame un segundito", "mira eso", "fuego". No eres un robot frío — eres un pana que sabe de negocios, construcción, soldadura, herrería, leyes y ventas.
+
+REGLAS DE CONVERSACIÓN CON PERSONAS REALES:
+1. Saluda como un humano: "¿Qué lo que, dime?" o "¿Cómo va todo?" en lugar de "Hola, soy un asistente virtual".
+2. Usa emojis con moderación (máx 2 por mensaje) para no parecer falso.
+3. Si la pregunta es ambigua, NO adivines. Pregunta de vuelta: "Mira, para darte lo mejor, ¿te refieres a X o a Y?"
+4. Si alguien está molesto o frustrado, primero VALIDA su emoción: "Entiendo que esto te tiene arrecho, vamos a resolverlo".
+5. Nunca uses frases robóticas como "Como asistente virtual no puedo...". Di: "Mira, eso no lo manejo por aquí, pero te consigo la info".
+6. Mantén contexto: recuerda de qué hablaban en mensajes anteriores.
+7. Si alguien escribe solo "hola", "hey", "buenas", responde con calidez y propón ayuda: "¿Qué lo que! ¿En qué te puedo echar una mano hoy?"
+8. Usa "tú" (no "usted") para sonar cercano.
+9. Si no sabes algo, admitelo con naturalidad: "Esa no me la sé, déjame buscarte algo".
+10. Cuando desprecies un producto/servicio, hazlo con entusiasmo genuino.
+11. Si alguien te insulta o está muy alterado, mantén la calma y ofrece pasar con un humano: "Mira, veo que estás tenso. ¿Quieres que te conecte con alguien del equipo?"
+12. NUNCA repitas la misma frase exacta dos veces. Varía tus respuestas.
+13. Si alguien te pide chistes, memes, o charla casual, responde con naturalidad — no seas un amargado.
+14. Cuando des números o precios, usa formato dominicano: RD$1,500.00
+15. Si alguien está tomando una decisión difícil (ej: comprar, contratar), ayúdale a pensar las opciones sin presionar.`;
 
 // ═══════════════════════════════════════════════════════════════════
 // ESTADO GLOBAL
@@ -293,6 +310,142 @@ function isAggressivePattern(text) {
   const exclamationCount = (text.match(/!/g) || []).length;
   const repeatedChars = /(.)\1{5,}/.test(text);
   return (capsRatio > 0.7 && text.length > 10) || exclamationCount > 5 || repeatedChars;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DETECCIÓN DE EMOCIONES Y SMALL TALK (para tratar con personas reales)
+// ═══════════════════════════════════════════════════════════════════
+
+function detectEmotion(text) {
+  const lower = text.toLowerCase();
+  const emotions = [];
+
+  // Frustración / Enojo
+  if (/\b(maldit|mierd|caraj|diabl|coñ|hosti|jod|put|estupi|idiot|imbéci|inúti|arrech|cabread|hart|fastidi|molest)\b/.test(lower)) emotions.push('angry');
+  if (/\b(nunca funciona|siempre falla|que pesadez|que fastidio|estoy harto|no sirve|no responde|basura|inútil)\b/.test(lower)) emotions.push('frustrated');
+
+  // Tristeza / Preocupación
+  if (/\b(trist|preocup|miedo|ansied|estresad|desesperad|deprimid|solo|sola|ayuda por favor|no sé qué hacer)\b/.test(lower)) emotions.push('sad');
+
+  // Felicidad / Gratitud
+  if (/\b(gracias|te agradezco|excelente|perfecto|genial|increíble|me encant|feliz|content|alegr)\b/.test(lower)) emotions.push('happy');
+
+  // Urgencia
+  if (/\b(urgente|ahora mismo|inmediat|rápido|prisa|apúrate|ya|emergencia)\b/.test(lower)) emotions.push('urgent');
+
+  // Sarcasmo / Duda
+  if (/\b(claro que sí|obviamente|qué sorpresa|ya veo|mmhm|ajá|seguro|sí claro)\b/.test(lower) && lower.length < 50) emotions.push('skeptical');
+
+  return emotions;
+}
+
+function getEmotionPrefix(emotions) {
+  if (emotions.includes('angry') || emotions.includes('frustrated')) {
+    return pickVariation([
+      'Mira, entiendo que estás molesto. Vamos a resolver esto juntos.',
+      'Vejo que estás tenso. Dame un segundito y te ayudo.',
+      'Entiendo tu frustración. Cuéntame bien qué pasó para ver cómo lo arreglamos.',
+    ]);
+  }
+  if (emotions.includes('sad')) {
+    return pickVariation([
+      'Entiendo que no es fácil. Estoy aquí para lo que necesites.',
+      'Tranqui, vamos paso a paso. No estás solo en esto.',
+      'Te escucho. Cuéntame todo lo que necesites.',
+    ]);
+  }
+  if (emotions.includes('urgent')) {
+    return pickVariation([
+      'Entiendo la prisa. Voy directo al grano.',
+      'Dime exactamente qué necesitas y lo resuelvo ya.',
+    ]);
+  }
+  return '';
+}
+
+function isSmallTalk(text) {
+  const lower = text.toLowerCase().trim();
+  const patterns = [
+    /^\b(hola|hey|buenas|buen día|buenas tardes|buenas noches|qué tal|cómo estás|cómo te va|cómo va todo|todo bien|qué hay|qué lo que|dime algo|cuéntame algo|saludos)\b/,
+    /^\b(adiós|chao|hasta luego|nos vemos|me voy|bye|hasta mañana|cuídate|que estés bien)\b/,
+    /^\b(gracias|muchas gracias|te lo agradezco|muy amable)\b$/,
+    /^\b(de nada|con gusto|para servirte)\b$/,
+    /^\b(jaja|lol|xd|ajá|ok|okay|vale|ya|mm|hm)\b$/,
+    /\b(cuántos años tienes|quién eres|qué eres|eres humano|eres robot|te gusta|tu color favorito|tienes novi|estás solter|qué opinas de|cuéntame un chiste|dime algo gracioso|recomiéndame|aburrid)\b/,
+  ];
+  return patterns.some(p => p.test(lower));
+}
+
+function isGreeting(text) {
+  const lower = text.toLowerCase().trim();
+  return /^\b(hola|hey|buenas|buen día|buenas tardes|buenas noches|qué tal|cómo estás|cómo te va|qué lo que|saludos)\b/.test(lower) && text.length < 60;
+}
+
+function handleGreeting() {
+  return pickVariation([
+    '¿Qué lo que! 👋 ¿En qué te puedo echar una mano hoy?',
+    '¡Buenas! ¿Cómo va todo? Dime qué necesitas.',
+    'Hey, hey 👋 ¿Qué hay? Cuéntame.',
+    '¿Qué tal? Aquí estoy. ¿En qué te ayudo?',
+    '¡Saludos! ¿Qué vamos a resolver hoy?',
+  ]);
+}
+
+function isFarewell(text) {
+  const lower = text.toLowerCase().trim();
+  return /^\b(adiós|chao|hasta luego|nos vemos|bye|hasta mañana|cuídate|que estés bien|me despido)\b/.test(lower) && text.length < 60;
+}
+
+function handleFarewell() {
+  return pickVariation([
+    'Dale, cuídate mucho. Si necesitas algo, me escribes. 👋',
+    'Chao, chao. Que tengas un buen día. 🙌',
+    'Nos vemos. Aquí estaré cuando me necesites.',
+    'Hasta luego. Éxito con todo. 💪',
+  ]);
+}
+
+function isThanks(text) {
+  const lower = text.toLowerCase().trim();
+  return /^\b(gracias|muchas gracias|te lo agradezco|muy amable|graciass)\b/.test(lower) && text.length < 80;
+}
+
+function handleThanks() {
+  return pickVariation(THANKS_VARIATIONS);
+}
+
+function needsClarification(text) {
+  // Detecta preguntas muy ambiguas o sin contexto
+  const lower = text.toLowerCase().trim();
+  if (lower.length < 8) return true;
+  const vagueWords = ['eso', 'aquello', 'lo otro', 'la cosa', 'el tema', 'eso mismo', 'lo mismo', 'algo', 'cualquiera'];
+  if (vagueWords.some(w => lower.includes(w))) return true;
+  // Solo un saludo sin pregunta
+  if (isGreeting(text) && !lower.includes('?') && text.length < 30) return false; // ya se maneja como greeting
+  return false;
+}
+
+function askClarification(text) {
+  return pickVariation([
+    'Mira, para darte lo mejor: ¿puedes darme un poco más de detalle?',
+    'Dime con más calma qué necesitas exactamente.',
+    'Quiero ayudarte bien. ¿A qué te refieres con eso?',
+    'Entiendo la idea, pero necesito que me expliques un poquito más.',
+  ]);
+}
+
+// Memoria de preferencias por usuario: { userId: { name, preferences, lastTopic } }
+const userPreferences = new Map();
+
+function rememberPreference(userId, key, value) {
+  if (!userPreferences.has(userId)) userPreferences.set(userId, {});
+  const prefs = userPreferences.get(userId);
+  prefs[key] = value;
+  prefs.lastUpdated = Date.now();
+}
+
+function getPreference(userId, key) {
+  return userPreferences.get(userId)?.[key];
 }
 
 function loadBlockedUsers() {
@@ -989,16 +1142,19 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  // Healthcheck básico: solo verifica que el servidor Express está vivo
-  // Fly.io usa esto para saber si debe enrutar tráfico a esta máquina
-  // NO usamos 503 aquí porque si WhatsApp está desconectado (esperando QR)
-  // Fly.io dejaría de enrutar tráfico y nadie podría escanear el QR
+  // Healthcheck: servidor siempre responde 200 para que Fly.io no mate el contenedor
+  // La app puede estar desconectada de WhatsApp pero el servidor debe seguir vivo
+  // para que el usuario pueda escanear QR desde /qr-html
+  const mem = process.memoryUsage();
   res.status(200).json({
     status: 'healthy',
     server: 'up',
+    whatsapp: isConnected ? 'connected' : 'disconnected',
     connected: isConnected,
+    phone: botPhoneNumber || null,
     uptime: process.uptime(),
     queueSize: messageQueue.length,
+    memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
     timestamp: new Date().toISOString()
   });
 });
@@ -2159,6 +2315,60 @@ ${topProviders}`, { simulateTyping: false });
   // Truncar mensaje
   const truncatedText = truncateText(text, MAX_MESSAGE_LENGTH);
 
+  // ═══ SMALL TALK & EMOCIONES (respuesta inmediata sin gastar tokens de IA) ═══
+  const emotions = detectEmotion(truncatedText);
+  const emotionPrefix = emotions.length > 0 ? getEmotionPrefix(emotions) : '';
+
+  // Escalamiento automático si usuario está muy frustrado/enojado
+  if ((emotions.includes('angry') || emotions.includes('frustrated')) && ADMIN_WHATSAPP) {
+    const angerCount = (getPreference(userId, 'angerCount') || 0) + 1;
+    rememberPreference(userId, 'angerCount', angerCount);
+    if (angerCount >= 3) {
+      await sendWhatsAppMessage(userId, 'Mira, veo que estás bastante molesto y no quiero que esto se vaya de las manos. Voy a conectarte con alguien del equipo que te puede atender mejor. Escribe "/humano" si quieres hablar con una persona ahora mismo. 😊', { simulateTyping: false });
+      await sendWhatsAppMessage(ADMIN_WHATSAPP, `🚨 ALERTA: ${name} (${getDisplayId(userId)}) está muy frustrado (${angerCount}x mensajes negativos). Requiere atención inmediata.`, { simulateTyping: false });
+      rememberPreference(userId, 'angerCount', 0);
+    }
+  }
+
+  // Saludos naturales (sin IA, respuesta inmediata)
+  if (isGreeting(truncatedText)) {
+    const greeting = handleGreeting();
+    await sendWhatsAppMessage(userId, emotionPrefix ? `${emotionPrefix}\n\n${greeting}` : greeting);
+    saveMessageToDb(userId, name, 'user', truncatedText, null, false, null);
+    saveMessageToDb(userId, name, 'assistant', greeting, 'smalltalk', false, null);
+    trackMessage(isGroup ? 'group' : 'private', 'smalltalk', false, 'greeting');
+    return;
+  }
+
+  // Despedidas naturales
+  if (isFarewell(truncatedText)) {
+    const farewell = handleFarewell();
+    await sendWhatsAppMessage(userId, farewell);
+    saveMessageToDb(userId, name, 'user', truncatedText, null, false, null);
+    saveMessageToDb(userId, name, 'assistant', farewell, 'smalltalk', false, null);
+    trackMessage(isGroup ? 'group' : 'private', 'smalltalk', false, 'farewell');
+    return;
+  }
+
+  // Gracias simples
+  if (isThanks(truncatedText)) {
+    const thanks = handleThanks();
+    await sendWhatsAppMessage(userId, thanks);
+    saveMessageToDb(userId, name, 'user', truncatedText, null, false, null);
+    saveMessageToDb(userId, name, 'assistant', thanks, 'smalltalk', false, null);
+    trackMessage(isGroup ? 'group' : 'private', 'smalltalk', false, 'thanks');
+    return;
+  }
+
+  // Si la pregunta es muy ambigua, pedir clarificación antes de gastar tokens
+  if (needsClarification(truncatedText) && !isSmallTalk(truncatedText)) {
+    const clarification = askClarification(truncatedText);
+    await sendWhatsAppMessage(userId, emotionPrefix ? `${emotionPrefix}\n\n${clarification}` : clarification);
+    saveMessageToDb(userId, name, 'user', truncatedText, null, false, null);
+    saveMessageToDb(userId, name, 'assistant', clarification, 'clarification', false, null);
+    return;
+  }
+
   // Guardar en memoria
   if (!conversations.has(userId)) {
     conversations.set(userId, []);
@@ -2169,13 +2379,19 @@ ${topProviders}`, { simulateTyping: false });
     history.shift();
   }
 
-  console.log(`[🧠] Procesando → ${name} (${getDisplayId(userId)})${isGroup ? ' [GRUPO]' : ''}: "${truncatedText.substring(0, 50)}..."`);
+  console.log(`[🧠] Procesando → ${name} (${getDisplayId(userId)})${isGroup ? ' [GRUPO]' : ''}${emotions.length > 0 ? ' [emoción: ' + emotions.join(',') + ']' : ''}: "${truncatedText.substring(0, 50)}..."`);
 
   // Construir mensajes para IA con contexto temporal actual
   const currentDate = new Date();
   const dateStr = currentDate.toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Santo_Domingo' });
   const timeStr = currentDate.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santo_Domingo' });
   const timeContext = `Hoy es ${dateStr}. La hora actual es ${timeStr} (hora de República Dominicana).`;
+
+  // Contexto emocional para la IA
+  let emotionContext = '';
+  if (emotions.length > 0) {
+    emotionContext = `\n\nNOTA SOBRE EL USUARIO: El usuario parece ${emotions.join(', ')}. Adapta tu tono para ser empático, paciente y comprensivo.`;
+  }
 
   // Buscar conocimiento relevante para este mensaje (RAG v2: chunks + TF-IDF)
   const relevantKnowledge = findRelevantKnowledge(truncatedText, 2500);
@@ -2196,7 +2412,7 @@ ${topProviders}`, { simulateTyping: false });
   }
 
   // Construir system prompt compacto para ahorrar tokens
-  const systemContent = `${SYSTEM_PROMPT}${legalDisclaimer}\n\n${timeContext}\n\nFAQs:\n${FAQS_TEXT}${knowledgeContext}`.substring(0, 4000);
+  const systemContent = `${SYSTEM_PROMPT}${legalDisclaimer}${emotionContext}\n\n${timeContext}\n\nFAQs:\n${FAQS_TEXT}${knowledgeContext}`.substring(0, 4000);
   const messages = [
     { role: 'system', content: systemContent }
   ];
@@ -2591,13 +2807,54 @@ if (!fs.existsSync(path.join(__dirname, 'memory'))) {
 loadConversations();
 loadKnowledge();
 
+// ═══════════════════════════════════════════════════════════════════
+// AUTO KEEP-ALIVE: Ping propio cada 5 min para mantener 24/7 activo
+// Funciona en Render, Fly.io, Railway, y cualquier hosting gratuito
+// ═══════════════════════════════════════════════════════════════════
+const KEEP_ALIVE_ENABLED = process.env.KEEP_ALIVE_ENABLED !== 'false';
+const KEEP_ALIVE_INTERVAL_MS = parseInt(process.env.KEEP_ALIVE_INTERVAL_MS || '300000'); // 5 min
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
+
+if (KEEP_ALIVE_ENABLED) {
+  setInterval(() => {
+    const url = `${PUBLIC_URL}/health`;
+    http.get(url, (res) => {
+      console.log(`[💓] Keep-alive ping OK: ${res.statusCode} | ${new Date().toISOString()}`);
+    }).on('error', (err) => {
+      console.log(`[💓] Keep-alive ping local (evita sleep): ${err.message}`);
+    });
+  }, KEEP_ALIVE_INTERVAL_MS);
+  console.log(`[💓] Auto keep-alive activado: cada ${KEEP_ALIVE_INTERVAL_MS / 1000}s → ${PUBLIC_URL}/health`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-RECONNECT WATCHDOG: Si WhatsApp desconectado > 10 min, forzar reconexión
+// ═══════════════════════════════════════════════════════════════════
+const WATCHDOG_INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '600000'); // 10 min
+let lastConnectedTime = Date.now();
+
+setInterval(() => {
+  if (isConnected) {
+    lastConnectedTime = Date.now();
+  } else {
+    const disconnectedMinutes = Math.floor((Date.now() - lastConnectedTime) / 60000);
+    console.log(`[🐕] Watchdog: desconectado hace ${disconnectedMinutes} min`);
+    if (disconnectedMinutes >= 10 && !isShuttingDown) {
+      console.log('[🐕] Watchdog: forzando reconexión...');
+      reconnectAttempts = 0;
+      startBot().catch(e => console.error('[!] Watchdog reconnect failed:', e.message));
+    }
+  }
+}, WATCHDOG_INTERVAL_MS);
+
 app.listen(PORT, HOST, () => {
   console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║     🤖 THE NECIO - BOT WHATSAPP v3.0             ║');
+  console.log('║     🤖 THE NECIO - BOT WHATSAPP v3.1             ║');
   console.log('║     Multi-IA · Fallback Infinito · 24/7          ║');
+  console.log('║     Auto-KeepAlive · Watchdog · Emociones        ║');
   console.log('╠══════════════════════════════════════════════════╣');
   console.log(`║  API HTTP:  http://${HOST}:${PORT}                 ║`);
-  console.log(`║  IAs:       Groq → Gemini → OpenRouter → Mistral ║`);
+  console.log(`║  IAs:       Cerebras → Groq → Gemini → OpenRouter ║`);
   console.log(`║  Fallback:  Respuesta local inteligente          ║`);
   console.log(`║  Memoria:   ${PERSIST_MEMORY ? 'PERSISTENTE' : 'VOLATIL'.padEnd(35)} ║`);
   console.log('╚══════════════════════════════════════════════════╝\n');

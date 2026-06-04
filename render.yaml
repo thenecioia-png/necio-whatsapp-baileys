@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: necio-whatsapp-bot
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: KEEP_ALIVE_ENABLED
+        value: true
+      - key: KEEP_ALIVE_INTERVAL_MS
+        value: 300000
+      - key: PUBLIC_URL
+        value: https://necio-whatsapp-bot.onrender.com
+    plan: free
+    healthCheckPath: /health

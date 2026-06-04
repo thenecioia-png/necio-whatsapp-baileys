@@ -1,7 +1,4 @@
 #!/bin/sh
-echo "[+] Limpiando sesion anterior..."
-rm -rf /app/auth_info_baileys/*
-rm -rf /app/auth_info_baileys/.w* 2>/dev/null
-
-echo "[+] Iniciando bot..."
+echo "[+] Iniciando Necio Bot v3..."
+echo "[+] Sesion preservada (volumen persistente)"
 exec node index.js

@@ -1,131 +1,128 @@
-# 🚀 Guía de Deploy - Necio WhatsApp Bot v3.0 (Multi-IA)
+# 🚀 Guía de Deploy - Necio WhatsApp Bot v3.1
 
-## ¿Qué hay de nuevo en v3.0?
+## Cambios realizados en esta versión
 
-**Fallback infinito de IAs:** Si una falla, entra la siguiente automáticamente:
-1. **Groq** → rápido, 100k tokens/día gratis
-2. **Google Gemini** → 60 req/min gratis
-3. **OpenRouter** → docenas de modelos, algunos gratis
-4. **Mistral** → freemium
-5. **Respuesta local** → si TODAS fallan, el bot sigue respondiendo con inteligencia local
-
-**Circuit Breaker:** Si una IA falla 3 veces, se salta por 5 minutos. No perdemos tiempo.
-
----
-
-## 🔑 Paso 0: Obtener API Keys (TODAS GRATIS)
-
-| Proveedor | URL | Límite Gratis |
-|-----------|-----|---------------|
-| **Groq** | https://console.groq.com/keys | 100,000 tokens/día |
-| **Gemini** | https://aistudio.google.com/app/apikey | 60 requests/min |
-| **OpenRouter** | https://openrouter.ai/keys | Depende del modelo (:free = gratis) |
-| **Mistral** | https://console.mistral.ai/api-keys | Limitado (suficiente para backup) |
-
-**Obligatorio:** Groq o Gemini (con una sola ya funciona, pero con más eres invencible)
+- ✅ **Fix crítico**: `start.sh` ya NO borra la sesión en cada reinicio
+- ✅ **Auto-keepalive**: Ping propio cada 5 minutos para mantener 24/7 activo
+- ✅ **Watchdog**: Reconexión automática si WhatsApp desconecta > 10 min
+- ✅ **Bot más inteligente**: Prompts conversacionales dominicanos, natural y cercano
+- ✅ **Detección de emociones**: Detecta enojo, frustración, tristeza, urgencia
+- ✅ **Small talk**: Saludos, despedidas, gracias — responde como un humano real
+- ✅ **Escalamiento inteligente**: Si alguien está muy frustrado, ofrece humano automáticamente
+- ✅ **Healthcheck mejorado**: Muestra estado real de WhatsApp + memoria
 
 ---
 
-## 🚀 Opción 1: Railway (Recomendada)
+## Opción A: Fly.io (el que ya tienes)
 
-### 1. Crear cuenta
-- Ve a https://railway.app
-- Regístrate con GitHub
+**Nota:** Fly.io ya NO es 100% gratis 24/7. Con `min_machines_running = 1` te cobran ~$2-5/mes.
 
-### 2. Instalar CLI
+### Pasos:
+
+1. Abre terminal en la carpeta del bot:
 ```bash
-npm i -g @railway/cli
-railway login
+cd C:\Users\susecomp\necio-whatsapp-baileys-code
 ```
 
-### 3. Inicializar proyecto
+2. Hacer deploy:
 ```bash
-cd necio-whatsapp-baileys
-railway init
+fly deploy
 ```
 
-### 4. Subir variables de entorno
+3. Ver logs:
 ```bash
-railway variables --set "GROQ_API_KEY=tu_key"
-railway variables --set "GEMINI_API_KEY=tu_key"
-railway variables --set "OPENROUTER_API_KEY=tu_key"
-railway variables --set "MISTRAL_API_KEY=tu_key"
-railway variables --set "ADMIN_WHATSAPP=tu_numero"
-railway variables --set "NODE_ENV=production"
-railway variables --set "PERSIST_MEMORY=true"
+fly logs -a necio-whatsapp-bot-v3
 ```
 
-### 5. Crear volúmenes persistentes (MUY IMPORTANTE)
-En el dashboard de Railway:
-- Ve a tu servicio → **Volumes**
-- Crea volumen: mount path `/app/auth_info_baileys`
-- Crea volumen: mount path `/app/memory`
-
-Sin esto, cada reinicio pierdes la sesión de WhatsApp.
-
-### 6. Deploy
+4. Si no reconecta, forzar reset de sesión:
 ```bash
-railway up
+fly ssh console -a necio-whatsapp-bot-v3
+# Dentro del contenedor:
+rm -rf /app/auth_info_baileys/*
+exit
+fly restart -a necio-whatsapp-bot-v3
 ```
 
-### 7. Obtener URL
-```bash
-railway domain
+5. Escanear QR desde tu celular:
 ```
-
-### 8. Escanear QR
-Visita `https://tu-app.railway.app/qr` desde tu celular y escanea.
+https://necio-whatsapp-bot-v3.fly.dev/qr-html
+```
 
 ---
 
-## 💰 Costos Reales
+## Opción B: Render.com (100% gratis con keep-alive)
 
-**Railway:**
-- Primeros $5 son gratis (1-2 meses típicamente)
-- Después: ~$5-10/mes según uso
+**Ventaja:** Plan gratuito real. Con el auto-keepalive que agregué, la app nunca se duerme.
 
-**Alternativa VPS barata:**
-- Hetzner: ~$4.20/mes
-- DigitalOcean: $6/mes
-- Vultr: $5/mes
+### Pasos:
 
-**Las APIs de IA:**
-- Groq: gratis con límites (suficiente para un bot)
-- Gemini: gratis con límites
-- OpenRouter: modelos `:free` son gratis
-- Mistral: freemium
+1. Sube tu código a GitHub (si no está ya)
 
-**Total realista para 24/7:**
-- Hosting: ~$5/mes
-- IAs: $0 (con keys gratuitas)
-- **Total: ~$5/mes**
+2. Ve a https://dashboard.render.com
 
----
+3. Click **New +** → **Blueprint**
 
-## 🩺 Monitoreo
+4. Conecta tu repo de GitHub
 
-- `GET /` → estado general, circuit breakers, memoria
-- `GET /health` → 200 si sano, 503 si desconectado
-- Railway dashboard → logs y métricas en tiempo real
+5. Render leerá automáticamente el archivo `render.yaml`
+
+6. Configura las variables de entorno en el dashboard de Render:
+   - `ADMIN_WHATSAPP` = 18297837862
+   - `API_SECRET` = tu_clave_secreta
+   - `GROQ_API_KEY` = tu_key
+   - `GEMINI_API_KEY` = tu_key
+   - (y las demás que uses)
+
+7. Deploy automático
+
+8. La URL será: `https://necio-whatsapp-bot.onrender.com`
 
 ---
 
-## 🔒 Seguridad
+## Variables de entorno IMPORTANTES
 
-**NUNCA subas al repo:**
-- `.env`
-- `auth_info_baileys/` (creds de WhatsApp)
-- `memory/conversations.json`
+```env
+# ─── Keep-Alive (nuevo) ───
+KEEP_ALIVE_ENABLED=true
+KEEP_ALIVE_INTERVAL_MS=300000
+PUBLIC_URL=https://tu-url-aqui.com
 
-Ya están en `.gitignore` y `.dockerignore`.
+# ─── Watchdog (nuevo) ───
+WATCHDOG_INTERVAL_MS=600000
+
+# ─── Admin ───
+ADMIN_WHATSAPP=18297837862
+
+# ─── IAs (configura TODAS las que tengas) ───
+GROQ_API_KEY=...
+GEMINI_API_KEY=...
+CEREBRAS_API_KEY=...
+# ... etc
+```
 
 ---
 
-## 🆘 Si todo falla
+## Solución de problemas
 
-Si las 4 IAs fallan al mismo tiempo:
-1. El bot **sigue respondiendo** con respuestas inteligentes locales
-2. Busca keywords en las FAQs
-3. Si no encuentra, da una respuesta genérica útil
-4. **NUNCA** deja al usuario sin respuesta
-5. Notifica al admin por WhatsApp
+### "QR no disponible"
+- Espera 30-60 segundos después del deploy
+- Si persiste, reinicia la app desde el dashboard
+
+### "Desconectado constantemente"
+- Verifica que `start.sh` NO borre la sesión (ya está fixeado)
+- Asegúrate de escanear el QR rápido (expira en ~1 min)
+
+### "Se duerme en Render"
+- El auto-keepalive debería prevenir esto
+- Verifica que `KEEP_ALIVE_ENABLED=true` esté configurado
+
+---
+
+## URLs útiles después del deploy
+
+| URL | Uso |
+|-----|-----|
+| `/health` | Estado del servidor + WhatsApp |
+| `/status` | Estado completo (503 si desconectado) |
+| `/qr-html` | Escanear QR desde el celular |
+| `/learn` | Panel web para subir conocimiento |
