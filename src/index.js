@@ -55,6 +55,8 @@ deps.features = features;
 deps.isEnabled = features.isEnabled;
 deps.getAI = features.getAI;
 deps.getPersonality = features.getPersonality;
+deps.getAll = features.getAll;
+deps.updateFeatures = features.updateFeatures;
 deps.reloadFeatures = features.reloadFeatures;
 
 // Personalidad
