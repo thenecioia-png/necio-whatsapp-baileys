@@ -15,3 +15,4 @@ wweb-final-auth/
 .wwebjs_cache/
 qr-*.png
 *.png
+*.backup

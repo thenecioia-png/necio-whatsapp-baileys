@@ -3,7 +3,7 @@ services:
     name: necio-whatsapp-bot
     env: node
     buildCommand: npm install
-    startCommand: node index.js
+    startCommand: node src/index.js
     envVars:
       - key: NODE_ENV
         value: production

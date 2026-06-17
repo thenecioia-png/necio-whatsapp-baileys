@@ -4,7 +4,7 @@ const path = require('path');
 const svc = new Service({
   name: 'Necio WhatsApp Bot v3',
   description: 'Bot de WhatsApp 24/7 con multi-IA fallback',
-  script: path.join(__dirname, 'index.js'),
+  script: path.join(__dirname, 'src', 'index.js'),
   cwd: __dirname,
   env: [
     { name: 'NODE_ENV', value: 'production' }
