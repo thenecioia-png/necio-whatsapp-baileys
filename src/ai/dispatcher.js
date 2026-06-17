@@ -16,6 +16,7 @@ function createDispatcher(config, context, deps) {
       { name: 'together', fn: deps.askTogether, available: !!config.togetherApiKey },
       { name: 'github', fn: deps.askGitHubModels, available: !!config.githubModelsToken },
       { name: 'mistral', fn: deps.askMistral, available: !!config.mistralApiKey },
+      { name: 'pollinations', fn: deps.askPollinations, available: true },
     ].filter(p => p.available);
 
     if (providers.length === 0) {

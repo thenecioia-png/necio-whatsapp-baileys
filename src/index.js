@@ -24,6 +24,7 @@ const createMistral = require('./ai/providers/mistral');
 const createCerebras = require('./ai/providers/cerebras');
 const createTogether = require('./ai/providers/together');
 const createGitHubModels = require('./ai/providers/github');
+const createPollinations = require('./ai/providers/pollinations');
 const createCircuitBreaker = require('./ai/circuit-breaker');
 const createDispatcher = require('./ai/dispatcher');
 const createFallback = require('./ai/fallback');
@@ -95,6 +96,7 @@ const providers = {
   askCerebras: createCerebras(config, context, deps),
   askTogether: createTogether(config, context, deps),
   askGitHubModels: createGitHubModels(config, context, deps),
+  askPollinations: createPollinations(config, context, deps),
 };
 
 const circuitBreaker = createCircuitBreaker(config, context, deps);
