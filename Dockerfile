@@ -14,8 +14,7 @@ RUN npm ci --only=production
 
 COPY . .
 
-# Copiar sesión del backup al contenedor
-RUN mkdir -p /tmp/auth_info_backup && cp -r auth_info_baileys_backup_20260516_001753/* /tmp/auth_info_backup/ 2>/dev/null || cp -r auth_info_baileys/* /tmp/auth_info_backup/ 2>/dev/null || true
+# Asegurar directorios de trabajo (la sesión de WhatsApp persiste en volumen montado)
 RUN mkdir -p auth_info_baileys config memory
 
 EXPOSE 3002
