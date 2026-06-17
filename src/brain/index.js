@@ -1,11 +1,26 @@
 const { pickVariation } = require('../utils/helpers');
 
 const GREETING_VARIATIONS = [
-  '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
-  'Hola, bienvenido. ¿Cómo puedo asistirte?',
-  '¡Buen día! Cuéntame, ¿qué necesitas?',
-  'Hola 👋 ¿Qué tal? Estoy aquí para ayudarte.',
-  '¡Saludos! ¿En qué te puedo colaborar?',
+  '¿Qué lo que! 👋 ¿En qué te puedo echar una mano hoy?',
+  '¡Buenas! ¿Cómo va todo? Dime qué necesitas.',
+  'Hey, hey 👋 ¿Qué hay? Cuéntame.',
+  '¿Qué tal? Aquí estoy. ¿En qué te ayudo?',
+  '¡Saludos! ¿Qué vamos a resolver hoy?',
+  'Dime, dime. ¿Qué necesitas?',
+  '¿Cómo estamos? Cuéntame.',
+  'Aquí al frente. ¿Qué lo que?',
+  '¡Fuego! Dime qué vamos a hacer.',
+  '¿Todo bien? Estoy ready.',
+  '¿Qué lo que, mi pana? Dime en qué te ayudo.',
+  '¡Buenas, buenas! ¿Cómo va eso?',
+  'Dale, cuéntame. Estoy escuchando.',
+  '¿En qué te puedo colaborar hoy?',
+  'Saludos, saludos. ¿Qué necesitas?',
+  '¿Qué vamos a mover hoy? Dime.',
+  'Aquí estoy, ready. ¿Qué hay?',
+  'Mira, dime. ¿En qué te ayudo?',
+  '¡Hola, hola! ¿Cómo va todo?',
+  '¿Qué necesitas resolver? Vamos allá.',
 ];
 
 const THANKS_VARIATIONS = [
@@ -13,36 +28,70 @@ const THANKS_VARIATIONS = [
   'De nada. ¡Que tengas un excelente día!',
   'Para servirte. ¿Algo más en lo que pueda ayudarte?',
   'No hay de qué. Cuando quieras me escribes.',
+  'A ti, por confiar. Cualquier cosa me avisas.',
+  'Con mucho gusto. ¿Necesitas algo más?',
+  'Para eso estamos. 😊',
+  'De nada, de nada. Cuídate.',
 ];
 
 const BUSY_VARIATIONS = [
-  'Dame un momento, estoy procesando tu solicitud...',
-  'Un segundo, déjame revisar eso...',
-  'Estoy en ello, ya te respondo...',
+  'Dame un momentico, estoy procesando eso...',
+  'Un segundito, déjame revisar...',
+  'Estoy en ello, ya te respondo.',
   'Procesando... 🧠',
+  'Dame un segundito, voy a ver eso.',
+  'Un momentico, que estoy pensando...',
+  'Ya mismo te respondo, dame un segundo.',
+  'Estoy revisando la info, espera un poquito.',
 ];
 
 const FALLBACK_VARIATIONS = [
-  'Lo siento, estoy teniendo dificultades técnicas. ¿Puedes reformular tu pregunta?',
-  'Disculpa, no pude conectarme con mis servicios en este momento. Intenta de nuevo en unos segundos.',
-  'Vaya, parece que hay un problema temporal. ¿Podemos intentarlo de nuevo?',
-  'Estoy experimentando lentitud en mis servicios. Por favor, repite tu mensaje.',
+  'Mira, ahora mismo estoy un poco lento con las IAs. ¿Puedes repetirme la pregunta?',
+  'Dame un segundito, parece que hay un problema temporal. Intenta de nuevo en unos segundos.',
+  'Vaya, ahora no puedo conectarme bien. Vamos a intentarlo de nuevo.',
+  'Estoy teniendo un problema técnico por aquí. Repíteme lo que necesitas.',
+  'Ahora mismo no tengo conexión con mis servicios. ¿Me lo preguntas de nuevo?',
+  'Parece que las IAs están dormidas. Déjame intentar de nuevo.',
+];
+
+const CONFUSED_VARIATIONS = [
+  'Mira, no estoy seguro de entender. ¿Puedes explicarme un poquito más?',
+  'Dame más detalle, que quiero ayudarte bien.',
+  'Eso no me quedó claro. ¿Me lo dices de otra forma?',
+  'Perdona, ¿a qué te refieres exactamente?',
+  'No capto bien. ¿Puedes ser más específico?',
+  'Mmm, no estoy seguro. Cuéntame mejor.',
+  'Eso suena interesante, pero necesito más contexto.',
+  'Dame un ejemplo o más detalle para entenderte mejor.',
+];
+
+const UNKNOWN_ANSWER_VARIATIONS = [
+  'Esa no me la sé, pero puedo intentar buscarte algo. ¿Te parece?',
+  'Mira, de eso no tengo info ahora. ¿Quieres que lo aprenda?',
+  'No tengo claro eso. Mejor te digo la verdad: no lo sé.',
+  'Eso no lo manejo por aquí, pero puedo intentar ayudarte de otra forma.',
+  'La verdad, no sé. Pero si me das más contexto, puedo intentar.',
+  'No tengo la respuesta exacta, pero no te voy a inventar nada.',
+  'Esa me queda grande por ahora. ¿Te ayudo con otra cosa?',
+  'No lo sé, pero puedo aprenderlo si me enseñas.',
 ];
 
 function detectEmotion(text) {
   const lower = text.toLowerCase();
   const emotions = [];
 
-  if (/\b(maldit|mierd|caraj|diabl|coñ|hosti|jod|put|estupi|idiot|imbéci|inúti|arrech|cabread|hart|fastidi|molest)\b/.test(lower)) emotions.push('angry');
-  if (/\b(nunca funciona|siempre falla|que pesadez|que fastidio|estoy harto|no sirve|no responde|basura|inútil)\b/.test(lower)) emotions.push('frustrated');
+  if (/\b(maldit|mierd|caraj|diabl|coñ|hosti|jod|put|estupi|idiot|imbéci|inúti|arrech|cabread|hart|fastidi|molest|enojad|brav|furios|irritad)\b/.test(lower)) emotions.push('angry');
+  if (/\b(nunca funciona|siempre falla|que pesadez|que fastidio|estoy harto|no sirve|no responde|basura|inútil|mala atención|no me gusta|qué desastre|qué mal|frustrante)\b/.test(lower)) emotions.push('frustrated');
 
-  if (/\b(trist|preocup|miedo|ansied|estresad|desesperad|deprimid|solo|sola|ayuda por favor|no sé qué hacer)\b/.test(lower)) emotions.push('sad');
+  if (/\b(trist|preocup|miedo|ansied|estresad|desesperad|deprimid|solo|sola|ayuda por favor|no sé qué hacer|mal día|me siento mal|necesito ayuda)\b/.test(lower)) emotions.push('sad');
 
-  if (/\b(gracias|te agradezco|excelente|perfecto|genial|increíble|me encant|feliz|content|alegr)\b/.test(lower)) emotions.push('happy');
+  if (/\b(gracias|te agradezco|excelente|perfecto|genial|increíble|me encant|feliz|content|alegr|emocionad|felicitaciones|bravo|qué bueno|me alegra)\b/.test(lower)) emotions.push('happy');
 
-  if (/\b(urgente|ahora mismo|inmediat|rápido|prisa|apúrate|ya|emergencia)\b/.test(lower)) emotions.push('urgent');
+  if (/\b(urgente|ahora mismo|inmediat|rápido|prisa|apúrate|ya|emergencia|lo necesito ya|es grave|no tengo tiempo)\b/.test(lower)) emotions.push('urgent');
 
-  if (/\b(claro que sí|obviamente|qué sorpresa|ya veo|mmhm|ajá|seguro|sí claro)\b/.test(lower) && lower.length < 50) emotions.push('skeptical');
+  if (/\b(seguro\?|de verdad|en serio|mmhm|ajá|ya veo|claro|ok|está bien|no estoy seguro|dudoso|sospechoso)\b/.test(lower) && lower.length < 80) emotions.push('skeptical');
+
+  if (/\b(emocionad|emocionante|increíble|increible|espectacular|increíble|genial|qué emoción|no puedo esperar|ansios|feliz)\b/.test(lower)) emotions.push('excited');
 
   return emotions;
 }
@@ -68,6 +117,18 @@ function getEmotionPrefix(emotions) {
       'Dime exactamente qué necesitas y lo resuelvo ya.',
     ]);
   }
+  if (emotions.includes('excited')) {
+    return pickVariation([
+      '¡Me alegra ver esa energía! Vamos con todo.',
+      '¡Esa actitud me gusta! Dime qué necesitas.',
+    ]);
+  }
+  if (emotions.includes('skeptical')) {
+    return pickVariation([
+      'Entiendo que quieras estar seguro. Te explico con calma.',
+      'Dame la oportunidad de aclararte eso.',
+    ]);
+  }
   return '';
 }
 
@@ -90,13 +151,7 @@ function isGreeting(text) {
 }
 
 function handleGreeting() {
-  return pickVariation([
-    '¿Qué lo que! 👋 ¿En qué te puedo echar una mano hoy?',
-    '¡Buenas! ¿Cómo va todo? Dime qué necesitas.',
-    'Hey, hey 👋 ¿Qué hay? Cuéntame.',
-    '¿Qué tal? Aquí estoy. ¿En qué te ayudo?',
-    '¡Saludos! ¿Qué vamos a resolver hoy?',
-  ]);
+  return pickVariation(GREETING_VARIATIONS);
 }
 
 function isFarewell(text) {
@@ -110,6 +165,8 @@ function handleFarewell() {
     'Chao, chao. Que tengas un buen día. 🙌',
     'Nos vemos. Aquí estaré cuando me necesites.',
     'Hasta luego. Éxito con todo. 💪',
+    'Dale pues, cuídate. Cualquier cosa me avisas.',
+    'Nos vemos después. 👋',
   ]);
 }
 
@@ -156,6 +213,8 @@ module.exports = {
   THANKS_VARIATIONS,
   BUSY_VARIATIONS,
   FALLBACK_VARIATIONS,
+  CONFUSED_VARIATIONS,
+  UNKNOWN_ANSWER_VARIATIONS,
   detectEmotion,
   getEmotionPrefix,
   isSmallTalk,

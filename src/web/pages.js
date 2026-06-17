@@ -1,5 +1,24 @@
+const fs = require('fs');
+const path = require('path');
+
 function createPages(config, context, deps) {
   const { apiSecret } = config;
+
+  function adminPage() {
+    const adminDir = path.join(__dirname, '..', 'admin');
+    try {
+      let html = fs.readFileSync(path.join(adminDir, 'dashboard.html'), 'utf8');
+      const css = fs.readFileSync(path.join(adminDir, 'styles.css'), 'utf8');
+      const js = fs.readFileSync(path.join(adminDir, 'admin.js'), 'utf8');
+      html = html.replace('/* INJECT_CSS */', css);
+      html = html.replace('/* INJECT_JS */', js);
+      html = html.replace(/\{\{API_KEY\}\}/g, apiSecret || '');
+      return html;
+    } catch (e) {
+      console.error('[!] Error cargando dashboard:', e.message);
+      return `<!DOCTYPE html><html><body style="background:#0a0a0f;color:#fff;font-family:monospace;padding:40px"><h1>Error cargando panel</h1><p>${e.message}</p></body></html>`;
+    }
+  }
 
   function qrGeneratingPage() {
     return `<!DOCTYPE html>
@@ -260,6 +279,7 @@ async function reloadKnowledge() {
     qrPage,
     qrHtmlGeneratingPage,
     learnPage,
+    adminPage,
   };
 }
 

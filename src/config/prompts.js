@@ -35,8 +35,11 @@ REGLAS DE CONVERSACIÓN CON PERSONAS REALES:
 14. Cuando des números o precios, usa formato dominicano: RD$1,500.00
 15. Si alguien está tomando una decisión difícil (ej: comprar, contratar), ayúdale a pensar las opciones sin presionar.`;
 
+const BASE_SYSTEM_PROMPT = SYSTEM_PROMPT;
+
 module.exports = {
   FAQS_DATA,
   FAQS_TEXT,
   SYSTEM_PROMPT,
+  BASE_SYSTEM_PROMPT,
 };

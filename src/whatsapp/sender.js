@@ -1,4 +1,4 @@
-function createSender(config, context) {
+function createSender(config, context, deps) {
   const {
     antiBanEnabled,
     typingDelayMinMs,
@@ -7,12 +7,18 @@ function createSender(config, context) {
     retrySendMax,
   } = config;
 
+  function isTypingEnabled() {
+    if (!antiBanEnabled) return false;
+    if (deps && deps.isEnabled && !deps.isEnabled('typingSimulation')) return false;
+    return true;
+  }
+
   async function sendWhatsAppMessage(to, text, options = {}) {
     if (!context.sock) throw new Error('WhatsApp no conectado');
     const jid = to.includes('@') ? to : `${to.replace(/\D/g, '')}@s.whatsapp.net`;
     const content = String(text);
 
-    if (antiBanEnabled && options.simulateTyping !== false && context.sock) {
+    if (isTypingEnabled() && options.simulateTyping !== false && context.sock) {
       const wordCount = content.split(/\s+/).length;
       const typingDurationMs = Math.max(
         typingDelayMinMs,

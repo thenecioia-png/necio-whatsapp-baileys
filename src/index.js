@@ -38,6 +38,8 @@ const createKeepAlive = require('./keepalive');
 const createPages = require('./web/pages');
 const createRoutes = require('./web/routes');
 const createWeb = require('./web');
+const createFeatures = require('./features');
+const createPersonality = require('./personality');
 
 const deps = {};
 
@@ -46,6 +48,20 @@ mkdirIfNeeded(config.sessionDir);
 mkdirIfNeeded(path.join(config.rootDir, 'config'));
 mkdirIfNeeded(path.join(config.rootDir, 'memory'));
 mkdirIfNeeded(config.knowledgeDir);
+
+// Features configurable en caliente
+const features = createFeatures(config, context, deps);
+deps.features = features;
+deps.isEnabled = features.isEnabled;
+deps.getAI = features.getAI;
+deps.getPersonality = features.getPersonality;
+deps.reloadFeatures = features.reloadFeatures;
+
+// Personalidad
+const personality = createPersonality(config, context, deps);
+deps.personality = personality;
+deps.buildSystemPrompt = personality.buildSystemPrompt;
+deps.reloadPersonality = personality.reloadPersonality;
 
 // Base de datos
 const db = createDb(config, context, deps);

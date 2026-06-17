@@ -264,6 +264,55 @@ function createRoutes(config, context, deps) {
       }
       res.json({ success: true, phone, humanMode: active });
     });
+
+    app.get('/api/features', requireAuth, (req, res) => {
+      try {
+        res.json(deps.getAll());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    app.post('/api/features', requireAuth, (req, res) => {
+      try {
+        const updated = deps.updateFeatures(req.body);
+        res.json({ success: true, features: updated });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    app.post('/api/features/reload', requireAuth, (req, res) => {
+      try {
+        res.json({ success: true, features: deps.reloadFeatures() });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    app.post('/api/session/reconnect', requireAuth, async (req, res) => {
+      try {
+        if (context.sock) {
+          try {
+            context.sock.ev.removeAllListeners();
+          } catch (e) {}
+          context.sock = null;
+        }
+        context.reconnectAttempts = 0;
+        setTimeout(() => deps.startBot().catch(() => {}), 2000);
+        res.json({ success: true, message: 'Reconexión iniciada' });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    app.get('/admin', (req, res) => {
+      res.send(pages.adminPage());
+    });
+
+    app.get('/admin/*path', (req, res) => {
+      res.send(pages.adminPage());
+    });
   }
 
   return { setup, requireAuth, upload };

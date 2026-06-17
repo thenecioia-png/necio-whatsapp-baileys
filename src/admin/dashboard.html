@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Necio Bot — Panel de Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* INJECT_CSS */
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🤖 NECIO BOT — CONTROL</h1>
+    <div class="header-stats">
+      <span id="header-uptime">Uptime: --</span>
+      <span id="header-memory">Memoria: -- MB</span>
+    </div>
+    <div class="status-pill">
+      <span id="status-dot" class="status-dot"></span>
+      <span id="status-text">Desconectado</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside>
+      <nav>
+        <a href="#features" class="active">⚡ Features</a>
+        <a href="#personality">🎭 Personalidad</a>
+        <a href="#ia">🧠 IA</a>
+        <a href="#knowledge">📚 Conocimiento</a>
+        <a href="#stats">📊 Estadísticas</a>
+        <a href="#session">🔌 Sesión</a>
+        <a href="/qr-html" target="_blank">📱 QR</a>
+        <a href="/learn" target="_blank">🎓 Aprender</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div id="msg" class="msg"></div>
+
+      <div class="grid">
+        <section id="features" class="card">
+          <h2>⚡ Features</h2>
+          <div id="features-list">
+            <p style="color:var(--muted)">Cargando...</p>
+          </div>
+          <button id="btn-save" class="btn btn-primary">💾 Guardar cambios</button>
+          <button id="btn-reload" class="btn btn-secondary">🔄 Recargar desde disco</button>
+        </section>
+
+        <section id="personality" class="card">
+          <h2>🎭 Personalidad</h2>
+          <div class="switch-row">
+            <span>Usar emojis</span>
+            <label class="switch">
+              <input type="checkbox" id="p-use-emojis" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Máximo emojis por mensaje</label>
+            <input type="range" id="p-max-emojis" min="0" max="5" value="2">
+            <small id="p-max-emojis-value" style="color:var(--muted)">2</small>
+          </div>
+          <div class="switch-row">
+            <span>Usar jerga local</span>
+            <label class="switch">
+              <input type="checkbox" id="p-use-slang" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <span>Seguimiento automático</span>
+            <label class="switch">
+              <input type="checkbox" id="p-auto-follow">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Delay de seguimiento (min)</label>
+            <input type="number" id="p-follow-delay" value="30" min="5" max="1440">
+          </div>
+        </section>
+
+        <section id="ia" class="card">
+          <h2>🧠 Configuración IA</h2>
+          <div class="form-row">
+            <label>Provider principal</label>
+            <select id="ai-primary">
+              <option value="pollinations">Pollinations</option>
+              <option value="cerebras">Cerebras</option>
+              <option value="groq">Groq</option>
+              <option value="gemini">Gemini</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="mistral">Mistral</option>
+              <option value="together">Together</option>
+              <option value="github">GitHub Models</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Fallback providers (separados por coma)</label>
+            <input type="text" id="ai-fallback" value="groq, gemini, openrouter, mistral">
+          </div>
+          <div class="form-row">
+            <label>Temperatura: <span id="ai-temperature-value">0.7</span></label>
+            <input type="range" id="ai-temperature" min="0" max="1" step="0.1" value="0.7">
+          </div>
+          <div class="form-row">
+            <label>Max tokens</label>
+            <input type="number" id="ai-max-tokens" value="250" min="50" max="2000">
+          </div>
+          <div class="form-row">
+            <label>Timeout (ms)</label>
+            <input type="number" id="ai-timeout" value="15000" min="1000" max="60000">
+          </div>
+        </section>
+
+        <section id="knowledge" class="card">
+          <h2>📚 Conocimiento</h2>
+          <p style="color:var(--muted)">Temas cargados: <strong id="knowledge-total">0</strong></p>
+          <ul id="knowledge-list" class="topics-list">
+            <li style="color:var(--muted)">Cargando...</li>
+          </ul>
+          <div class="form-row">
+            <label>Subir archivo (.md, .txt, .pdf, .docx, .xlsx, .csv)</label>
+            <input type="file" id="file-upload" accept=".md,.txt,.pdf,.docx,.xlsx,.csv">
+          </div>
+          <button id="btn-reload-knowledge" class="btn btn-secondary">🔄 Recargar conocimiento</button>
+        </section>
+
+        <section id="stats" class="card">
+          <h2>📊 Estadísticas</h2>
+          <div class="stats-grid">
+            <div class="stat">
+              <div id="stat-total" class="stat-value">0</div>
+              <div class="stat-label">Mensajes totales</div>
+            </div>
+            <div class="stat">
+              <div id="stat-today" class="stat-value">0</div>
+              <div class="stat-label">Hoy</div>
+            </div>
+            <div class="stat">
+              <div id="stat-users" class="stat-value">0</div>
+              <div class="stat-label">Usuarios únicos</div>
+            </div>
+            <div class="stat">
+              <div id="stat-fallback" class="stat-value">0</div>
+              <div class="stat-label">Fallbacks</div>
+            </div>
+            <div class="stat">
+              <div id="stat-topics" class="stat-value">0</div>
+              <div class="stat-label">Temas</div>
+            </div>
+            <div class="stat">
+              <div id="stat-chunks" class="stat-value">0</div>
+              <div class="stat-label">Chunks</div>
+            </div>
+          </div>
+          <h3>Uso de IAs</h3>
+          <ul id="stat-providers" class="topics-list">
+            <li style="color:var(--muted)">Cargando...</li>
+          </ul>
+        </section>
+
+        <section id="session" class="card">
+          <h2>🔌 Sesión WhatsApp</h2>
+          <p style="color:var(--muted)">Forzar reconexión sin borrar la sesión actual. Solo usa esto si el bot está desconectado.</p>
+          <button id="btn-reconnect" class="btn btn-danger">⚡ Forzar reconexión</button>
+          <a href="/qr-html" target="_blank" class="btn btn-secondary" style="margin-top:10px;display:inline-block;text-align:center;text-decoration:none">📱 Ver QR</a>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    window.NECIO_API_KEY = '{{API_KEY}}';
+    /* INJECT_JS */
+  </script>
+</body>
+</html>
